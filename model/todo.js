@@ -6,7 +6,7 @@ const model = "todo"
 
 let todoSchema = new Schema({
     title: String,
-    description: String,
+    text: String,
     dueDate: Date,
     done: Boolean
 })

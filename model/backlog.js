@@ -4,7 +4,7 @@ const mongoose = require("mongoose"),
 const model = "backlog"
 
 let backlogSchema = new Schema({
-    todoIDs: Array
+    todo: Any
 })
 
 backlogSchema.statics.findAll = function (callback) {

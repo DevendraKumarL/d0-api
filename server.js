@@ -12,10 +12,9 @@ const port = 5001
 app.use(bodyParser.json())
 
 /* TODO: Move this to a new file with routes */
-/* TODO: Comment each api functionality */
 
 let dbConnected = false
-const mongoDB_URL = "http://localhost:27017/d0"
+const mongoDB_URL = "mongodb://localhost:27017/d0"
 mongoose.connect(mongoDB_URL)
 
 let db = mongoose.connection
@@ -28,6 +27,7 @@ db.on("open", () => {
     dbConnected = true
 })
 
+// Set Access Control headers to allow CORS
 app.use((req, resp, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
@@ -36,6 +36,7 @@ app.use((req, resp, next) => {
     next()
 })
 
+// Find and return the complete list of all todos along with all the tasks of each todo
 function getAllToDos() {
     ToDo.findAll((err, todos) => {
         if (err) {
@@ -50,6 +51,7 @@ function getAllToDos() {
     })
 }
 
+// Find the return the complete todo data of a given todoID
 function getToDo(todoID) {
     ToDo.findById(ObjectID(todoID), (err, todo) => {
         if (err) {
@@ -62,6 +64,7 @@ function getToDo(todoID) {
     })
 }
 
+// GET: Return all the todos along with all the tasks(complete detail record)
 app.get("/d0/todos", (req, resp) => {
     let todos = getAllToDos()
     if (todos === null) {
@@ -70,6 +73,7 @@ app.get("/d0/todos", (req, resp) => {
     return resp.json(todos)
 })
 
+// GET: Return todo record for the given  todoID
 app.get("/d0/todo/:id", (req, resp) => {
     let todo = getToDo(req.path["id"])
     if (todo === null) {
@@ -78,6 +82,7 @@ app.get("/d0/todo/:id", (req, resp) => {
     return resp.json(todo)
 })
 
+// POST: Create a new todo along with all the data including tasks if any
 app.post("/d0/todo", (req, resp) => {
     let data = {
         title: req.body.title,
@@ -85,14 +90,18 @@ app.post("/d0/todo", (req, resp) => {
         dueDate: req.bosy.dueDate,
         done: false
     }
+    console.log("New ToDo data: ", data)
 
     let newTodo = new ToDo(data)
     newTodo.save((err, todo) => {
         if (err) {
             return resp.status(500).json({error: "Erro saving new todo"})
         }
+        // Create new tasks for the given list of tasks in the request body for this new todo
+        let tasks = req.body.tasks
+        console.log("New Tasks data: ", tasks)
         let errSave = false
-        req.body.tasks.forEach(task => {
+        tasks.forEach(task => {
             if (errSave) {
                 break
             }
@@ -114,9 +123,10 @@ app.post("/d0/todo", (req, resp) => {
     })
 })
 
+// POST: Create new tasks under a todo having the todoID
 app.post("/d0/todo/:id/tasks", (req, resp) => {
-    let tasks = req.params["tasks"]
-    console.log("Tasks data: ", tasks)
+    let tasks = req.body.tasks
+    console.log("New Tasks data: ", tasks)
     let errSave = false
     tasks.forEach(task => {
         if (errSave) {
@@ -139,10 +149,13 @@ app.post("/d0/todo/:id/tasks", (req, resp) => {
     }
 })
 
-app.put("/d0/todo/:id/tasks/update", (req, resp) => {
+// PUT: Update complete todo record along with task status and backlog record
+app.put("/d0/todo/:id/update", (req, resp) => {
     let tasksStatus = req.body.tasksStatus
+    console.log("Tasks Status: ", tasksStatus)
     let errUpdate = false
     let todoID = req.path["id"]
+    // For each task update its status done:true/false
     tasksStatus.forEach(tskStatus => {
         let newStatus = {done: tskStatus.done}
         let filter = {_id: ObjectID(tskStatus.id), todoID: ObjectID(todoID)}
@@ -159,6 +172,7 @@ app.put("/d0/todo/:id/tasks/update", (req, resp) => {
             if (err) {
                 return resp.status(500).json({error: "Error getting all tasks of this todo"})
             }
+            // Find if any task is not yet done under this todo
             let flag = true
             tasks.forEach(task => {
                 if (!task.done) {
@@ -166,17 +180,52 @@ app.put("/d0/todo/:id/tasks/update", (req, resp) => {
                     break
                 }
             })
-            if (flag) {
-                ToDo.findOneAndUpdate({ObjectID(todoID)}, {done: true}, {new: true}, (err, todo) => {
-                    return resp.json({success: "Tasks updated successfully", todo: todo})
-                })
+            let todoUpdatedData = {
+                title: req.body.title,
+                text: req.body.text,
+                dueDate: req.body.dueDate,
+                done: flag
             }
+            console.log("todoUpdatedData: ", todoUpdatedData)
+            // Update complete todo record
+            ToDo.findOneAndUpdate({ObjectID(todoID)}, todoUpdatedData, {new: true}, (err, todo) => {
+                if (err) {
+                    return resp.status(500).json({error: "Error updating the todo"})
+                }
+                // If the todo is marked done, remove it from backlog if present in it
+                if (flag) {
+                    Backlog.findByIdAndRemove(todo._id, (err, res) => {
+                        return resp.json({success: "Todo, Tasks and Backlogs updated successfully", todo: todo})
+                    })
+                }
+                return resp.json({success: "Todo and Tasks updated successfully", todo: todo})
+            })
         })
     }
 })
 
-// TODO: Delete task(s) of a todo
+// DELETE: Delete task(s) of a todo
+app.delete("/d0/todo/:id/tasks", (req, resp) => {
+    let tasksToDelete = req.body.deleteTasks
+    console.log("Tasks to delete: ", tasksToDelete)
+    let errDelete = false
+    tasksToDelete.forEach(tsk => {
+        if (errUpdate) {
+            break
+        }
+        let filter = {_id: ObjectID(tsk.id), todoID: ObjectID(req.path["id"])}
+        Task.findOneAndRemove(filter, (err, res) => {
+            if (err) {
+                return resp.status(500).json({error: "Error deleting the tasks"})
+            }
+        })
+    })
+    if (!errDelete) {
+        return resp.json({success: "Deleted the tasks successfully"})
+    }
+})
 
+// GET: Return all the backlog records
 app.get("/d0/backlogs", (req, resp) => {
     Backlog.findAll((err, bLogs) => {
         if (err) {
@@ -186,19 +235,16 @@ app.get("/d0/backlogs", (req, resp) => {
     })
 })
 
+// POST: Add a todo(todoID) to backlog records
 app.post("/d0/backlog", (req, resp) => {
-    let todo = getToDo(req.params["id"])
-    if (todo === null) {
-        return resp.status(500).json({error: "Could not get the todo to add it to backlog"})
-    }
     let newBacklog = new Backlog({
-        todo: todo
+        todoID: req.body.id
     })
     newBacklog.save((err, backlog) => {
         if (err) {
             return resp.status(500).json({error: "Error saving new backlog"})
         }
-        return resp.json({success: "Created a backlog"})
+        return resp.json({success: "Created a backlog with given todoID"})
     })
 })
 

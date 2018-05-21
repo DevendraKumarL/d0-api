@@ -103,7 +103,7 @@ app.post("/d0/todo", (req, resp) => {
         let errSave = false
         tasks.forEach(task => {
             if (errSave) {
-                break
+                return null
             }
             let tsk = new Task({
                 name: task.name,
@@ -130,7 +130,7 @@ app.post("/d0/todo/:id/tasks", (req, resp) => {
     let errSave = false
     tasks.forEach(task => {
         if (errSave) {
-            break
+            return null
         }
         let newTask = new Task({
             name: task.name,
@@ -177,7 +177,7 @@ app.put("/d0/todo/:id/update", (req, resp) => {
             tasks.forEach(task => {
                 if (!task.done) {
                     flag = false
-                    break
+                    return null
                 }
             })
             let todoUpdatedData = {
@@ -188,7 +188,7 @@ app.put("/d0/todo/:id/update", (req, resp) => {
             }
             console.log("todoUpdatedData: ", todoUpdatedData)
             // Update complete todo record
-            ToDo.findOneAndUpdate({ObjectID(todoID)}, todoUpdatedData, {new: true}, (err, todo) => {
+            ToDo.findOneAndUpdate({_id: ObjectID(todoID)}, todoUpdatedData, {new: true}, (err, todo) => {
                 if (err) {
                     return resp.status(500).json({error: "Error updating the todo"})
                 }
@@ -211,7 +211,7 @@ app.delete("/d0/todo/:id/tasks", (req, resp) => {
     let errDelete = false
     tasksToDelete.forEach(tsk => {
         if (errUpdate) {
-            break
+            return null
         }
         let filter = {_id: ObjectID(tsk.id), todoID: ObjectID(req.path["id"])}
         Task.findOneAndRemove(filter, (err, res) => {

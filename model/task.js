@@ -1,12 +1,13 @@
 const mongoose = require("mongoose"),
     Schema = mongoose.Schema,
+    ObjectId = Schema.Types.ObjectId,
     ObjectID = require("mongodb").ObjectID
 
 const model = "task"
 
 let taskSchema = new Schema({
     name: String,
-    todoID: ObjectID,
+    todoID: {type: ObjectId},
     done: Boolean
 })
 

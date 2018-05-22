@@ -10,7 +10,7 @@ let backlogSchema = new Schema({
 })
 
 backlogSchema.statics.findAll = function (callback) {
-    return this.findAll(callback)
+    return this.find(callback)
 }
 
 let Backlog = mongoose.model(model, backlogSchema)

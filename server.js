@@ -12,6 +12,7 @@ const port = 5001
 app.use(bodyParser.json())
 
 /* TODO: Move this to a new file with routes */
+/* TODO: Handle mongo connection check in all APIs before executing */
 
 let dbConnected = false
 const mongoDB_URL = "mongodb://localhost:27017/d0"
@@ -29,57 +30,41 @@ db.on("open", () => {
 
 // Set Access Control headers to allow CORS
 app.use((req, resp, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-    res.setHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
-    res.setHeader("Access-Control-Allow-Credentials", true)
+    resp.setHeader("Access-Control-Allow-Origin", "*")
+    resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+    resp.setHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
+    resp.setHeader("Access-Control-Allow-Credentials", true)
     next()
 })
 
-// Find and return the complete list of all todos along with all the tasks of each todo
-function getAllToDos() {
+// GET: Return all the todos along with all the tasks(complete detail record)
+app.get("/d0/todos", (req, resp) => {
+    // Find and return the complete list of all todos along with all the tasks of each todo
     ToDo.findAll((err, todos) => {
         if (err) {
-            return null
+            return resp.status(500).json({error: "Could not get all the todos"})
         }
         todos.forEach(todo => {
             Task.findToDoTasks(todo._id, (err, tasks) => {
                 todo.tasks = tasks
             })
         })
-        return todos
+        return resp.json(todos)
     })
-}
+})
 
-// Find the return the complete todo data of a given todoID
-function getToDo(todoID) {
-    ToDo.findById(ObjectID(todoID), (err, todo) => {
+// GET: Return todo record for the given  todoID
+app.get("/d0/todo/:id", (req, resp) => {
+    // Find the return the complete todo data of a given todoID
+    ToDo.findById(ObjectID(req.path["id"]), (err, todo) => {
         if (err) {
-            return null
+            return resp.status(500).json({error: "Could not get the todo"})        
         }
         Task.findToDoTasks(todo._id, (err, tasks) => {
             todo.tasks = tasks
         })
         return resp.json(todo)
     })
-}
-
-// GET: Return all the todos along with all the tasks(complete detail record)
-app.get("/d0/todos", (req, resp) => {
-    let todos = getAllToDos()
-    if (todos === null) {
-        return resp.status(500).json({error: "Could not get all the todos"})
-    }
-    return resp.json(todos)
-})
-
-// GET: Return todo record for the given  todoID
-app.get("/d0/todo/:id", (req, resp) => {
-    let todo = getToDo(req.path["id"])
-    if (todo === null) {
-        return resp.status(500).json({error: "Could not get the todo"})        
-    }
-    return resp.json(todo)
 })
 
 // POST: Create a new todo along with all the data including tasks if any
@@ -87,7 +72,7 @@ app.post("/d0/todo", (req, resp) => {
     let data = {
         title: req.body.title,
         text: req.body.text,
-        dueDate: req.bosy.dueDate,
+        dueDate: req.body.dueDate,
         done: false
     }
     console.log("New ToDo data: ", data)
@@ -144,6 +129,7 @@ app.post("/d0/todo/:id/tasks", (req, resp) => {
             }
         })
     })
+    // TODO: Might not work
     if (!errSave) {
         return resp.json({success: "Created " + tasks.length + " new tasks"})
     }
@@ -166,6 +152,7 @@ app.put("/d0/todo/:id/update", (req, resp) => {
             }
         })
     })
+    // TODO: Might not work
     if (!errUpdate) {
         // Check if all the tasks are done
         Task.findToDoTasks(todoID, (err, tasks) => {
@@ -220,6 +207,7 @@ app.delete("/d0/todo/:id/tasks", (req, resp) => {
             }
         })
     })
+    // TODO: Might not work
     if (!errDelete) {
         return resp.json({success: "Deleted the tasks successfully"})
     }

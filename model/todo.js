@@ -12,7 +12,7 @@ let todoSchema = new Schema({
 })
 
 todoSchema.statics.findAll = function (callback) {
-    return this.findAll(callback)
+    return this.find(callback)
 }
 
 let ToDo = mongoose.model(model, todoSchema)

@@ -12,7 +12,7 @@ let taskSchema = new Schema({
 })
 
 taskSchema.statics.findToDoTasks = function (todoID, callback) {
-    return this.findAll({todoID: ObjectID(todoID)}, callback);
+    return this.find({todoID: ObjectID(todoID)}, callback);
 }
 
 let Task = mongoose.model(model, taskSchema)

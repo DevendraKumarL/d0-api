@@ -56,7 +56,7 @@ app.get("/d0/todos", (req, resp) => {
 // GET: Return todo record for the given  todoID
 app.get("/d0/todo/:id", (req, resp) => {
     // Find the return the complete todo data of a given todoID
-    ToDo.findById(ObjectID(req.path["id"]), (err, todo) => {
+    ToDo.findById(ObjectID(req.params["id"]), (err, todo) => {
         if (err) {
             return resp.status(500).json({error: "Could not get the todo"})        
         }
@@ -87,9 +87,16 @@ app.post("/d0/todo", (req, resp) => {
         console.log("New Tasks data: ", tasks)
         let errSave = false
         tasks.forEach(task => {
+            // TODO: Might not work            
             if (errSave) {
                 return null
             }
+
+            // Skip empty name task
+            if (task.name === "" || task.name === undefined) {
+                return
+            }
+
             let tsk = new Task({
                 name: task.name,
                 todoID: todo._id,
@@ -102,6 +109,7 @@ app.post("/d0/todo", (req, resp) => {
                 }
             })
         })
+        // TODO: Might not work
         if (!errSave) {
             return resp.json({success: "Created a todo and added task(s)? under it"})
         }
@@ -114,12 +122,13 @@ app.post("/d0/todo/:id/tasks", (req, resp) => {
     console.log("New Tasks data: ", tasks)
     let errSave = false
     tasks.forEach(task => {
+        // TODO: Might not work        
         if (errSave) {
             return null
         }
         let newTask = new Task({
             name: task.name,
-            todoID: req.path["id"],
+            todoID: req.params["id"],
             done: false
         })
         newTask.save((err, tsk) => {
@@ -140,7 +149,7 @@ app.put("/d0/todo/:id/update", (req, resp) => {
     let tasksStatus = req.body.tasksStatus
     console.log("Tasks Status: ", tasksStatus)
     let errUpdate = false
-    let todoID = req.path["id"]
+    let todoID = req.params["id"]
     // For each task update its status done:true/false
     tasksStatus.forEach(tskStatus => {
         let newStatus = {done: tskStatus.done}
@@ -191,6 +200,32 @@ app.put("/d0/todo/:id/update", (req, resp) => {
     }
 })
 
+// DELETE: Delete a todo completely and all its tasks including from backlog
+app.delete("/d0/todo/:id", (req, resp) => {
+    let todoID = req.params["id"]
+    // Check deleteOne VS findOneAndRemove
+    // First delete all the tasks with todoID
+    let filter = {todoID: ObjectID(todoID)}
+    Task.deleteMany(filter, (err, tsk) => {
+        if (err) {
+            return resp.status(500).json({error: "Could not delete all the tasks first"})
+        }
+        // Now delete the todo from backlog if present
+        Backlog.findOneAndRemove(filter, (err, bcl) => {
+            if (err) {
+                return resp.status(500).json({error: "Could not delete the todo from backlog"})
+            }
+            // Delete the main todo
+            ToDo.findOneAndRemove({_id: ObjectID(todoID)}, (err, tdo) => {
+                if (err) {
+                    return resp.status(500).json({error: "Could not delete the todo"})
+                }
+                return resp.json({success: "Deleted the todo sucessfully"})
+            })
+        })
+    })
+})
+
 // DELETE: Delete task(s) of a todo
 app.delete("/d0/todo/:id/tasks", (req, resp) => {
     let tasksToDelete = req.body.deleteTasks
@@ -200,8 +235,9 @@ app.delete("/d0/todo/:id/tasks", (req, resp) => {
         if (errUpdate) {
             return null
         }
-        let filter = {_id: ObjectID(tsk.id), todoID: ObjectID(req.path["id"])}
-        Task.findOneAndRemove(filter, (err, res) => {
+        let filter = {_id: ObjectID(tsk.id), todoID: ObjectID(req.params["id"])}
+        // Check deleteOne VS findOneAndRemove
+        Task.deleteOne(filter, (err, res) => {
             if (err) {
                 return resp.status(500).json({error: "Error deleting the tasks"})
             }

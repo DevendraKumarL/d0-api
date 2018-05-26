@@ -9,10 +9,6 @@ let backlogSchema = new Schema({
     todoID: {type: ObjectId}
 })
 
-backlogSchema.statics.findAll = function (callback) {
-    return this.find(callback)
-}
-
 let Backlog = mongoose.model(model, backlogSchema)
 
 module.exports = Backlog

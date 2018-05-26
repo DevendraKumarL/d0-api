@@ -8,12 +8,9 @@ let todoSchema = new Schema({
     title: String,
     text: String,
     dueDate: Date,
+    tasks: Array,
     done: Boolean
 })
-
-todoSchema.statics.findAll = function (callback) {
-    return this.find(callback)
-}
 
 let ToDo = mongoose.model(model, todoSchema)
 

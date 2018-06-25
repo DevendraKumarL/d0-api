@@ -45,4 +45,12 @@ router.delete(API_URL + "todo/:id", Controller.deleteToDo)
 // PUT: Update a todo to mark it has "done"
 router.put(API_URL + "todo/:id", Controller.updateDoneStatus)
 
+
+/* Workspace */
+// GET: get lists of all the workspaces from DB
+router.get(API_URL + "workspaces", Controller.getAllWorkspaces)
+
+// POST: create a new workspace with given name
+router.post(API_URL + "workspace", Controller.createWorkspace)
+
 module.exports = router

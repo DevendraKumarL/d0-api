@@ -8,9 +8,10 @@ let todoSchema = new Schema({
 	text: String,
 	dueDate: Date,
 	tasks: Array,
-	done: Boolean
+	done: Boolean,
+	workspace: String
 })
 
 let ToDo = mongoose.model(model, todoSchema)
 
-module.exports = ToDo;
+module.exports = ToDo

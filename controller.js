@@ -1,4 +1,5 @@
 const ToDo = require("./model/todo"),
+	Workspace = require("./model/workspace"),
 	ObjectID = require("mongodb").ObjectID
 
 module.exports = {
@@ -31,7 +32,8 @@ module.exports = {
 			text: req.body.text,
 			dueDate: req.body.dueDate,
 			done: false,
-			tasks: req.body.tasks
+			tasks: req.body.tasks,
+			workspace: req.body.workspace
 		}
 
 		let newTodo = new ToDo(data)
@@ -64,7 +66,7 @@ module.exports = {
 			if (err) {
 				return resp.status(500).json({ error: "Error updating the todo" })
 			}
-			return resp.json({ success: "Todo and Tasks updated successfully", todo: todo })			
+			return resp.json({ success: "Todo and Tasks updated successfully", todo: todo })
 		})
 	},
 
@@ -86,9 +88,42 @@ module.exports = {
 		let done = { done: req.body.done }
 		ToDo.findOneAndUpdate(filter, done, { new: true }, (err, todo) => {
 			if (err) {
-				return resp.status(500).jaon({ error: "Error updating the todo" })
+				return resp.status(500).json({ error: "Error updating the todo" })
 			}
-			return resp.json({ success: "Updated the todo successfully", todo: todo })			
+			return resp.json({ success: "Updated the todo successfully", todo: todo })
+		})
+	},
+
+	// GET: get lists of all the workspaces from DB
+	getAllWorkspaces: (req, resp) => {
+		Workspace.find((err, workspaces) => {
+			if (err) {
+				return resp.status(500).json({ error: "Error fetching workspaces" })
+			}
+			return resp.json(workspaces)
+		})
+	},
+
+	// POST: create a new workspace with given name
+	createWorkspace: (req, resp) => {
+		Workspace.findOne({ name: req.body.name }, (err, ws) => {
+			if (err) {
+				return resp.status(500).json({ error: "Error checking existing workspaces" })
+			}
+			if (!ws) {
+				let workspace = new Workspace({
+					name: req.body.name
+				})
+				workspace.save((err, workspace) => {
+					if (err) {
+						return resp.status(500).json({ error: "Error creating a new workspace" })
+					}
+					return resp.json({ success: "Successfully created a new workspace", workspace: workspace })
+				})
+			}
+			else {
+				return resp.status(400).json({error: "Workspace already exists"});
+			}
 		})
 	}
 }
